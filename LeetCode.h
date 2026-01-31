@@ -16,6 +16,8 @@
 #include <regex>
 #include <ext/pool_allocator.h>
 #include <utility>
+#include <sys/stat.h>
+#include <dirent.h>
 
 using namespace std;
 
@@ -3010,3 +3012,5 @@ public:
 vector<string> wordBreak1(string s, vector<string>& wordDict);
 bool hasCycle(ListNode *head);
 
+vector<string> traverse_file_on_direction(const string& src_dir, const string& suffix);
+void transform_quality(const vector<string>& files, const string& dst_dir);

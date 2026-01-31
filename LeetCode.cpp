@@ -5027,6 +5027,53 @@ bool hasCycle(ListNode *head)
     return false;
 }
 
+vector<string> traverse_file_on_direction(const string &src_dir, const string& suffix)
+{
+    vector<string> all_videos;
+    deque<string> dirs;
+    dirs.push_back(src_dir);
+    while (!dirs.empty())
+    {
+        string top = dirs.front();
+        dirs.pop_front();
+
+        DIR* dir = opendir(top.c_str());
+        struct dirent* ent;
+
+        while((ent = readdir(dir)) != nullptr)
+        {
+            string name  = ent->d_name;
+            if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
+                continue;
+
+            string fullPath = top + "/" + name;
+            struct stat st;
+            if(stat(fullPath.c_str(), &st) == -1)
+            {
+                cerr << "read error: " << top << "\n";
+                continue;
+            }
+
+            if(S_ISDIR(st.st_mode))
+                dirs.push_back(fullPath);
+            else
+            {
+                if(strstr(ent->d_name, suffix.c_str()) != nullptr)
+                    all_videos.push_back(fullPath);
+            }        
+        }
+    }
+    return all_videos;
+}
+
+void transform_quality(const vector<string> &files, const string &dst_dir)
+{
+    
+
+    
+
+}
+
 void test()
 {
     // ListNode* list_element = createListNode({21, 34, 54, 65, 3, 35, 563}); 
@@ -5148,20 +5195,13 @@ void test()
     // m_set.insert(8);
     // m_set.insert(3);
     // m_set.insert(1);
-    list<int> m_list;
-    cout << "block_size: " << block_size << ", block_time: " << block_time << "\n";
-    for (int i = 0; i < 10000000; i++)
-    {
-        m_list.push_back(i);
-    }
-    cout << "block_size: " << block_size << ", block_time: " << block_time << "\n";
-
-
     // list<int, __gnu_cxx::__pool_alloc<int> > custom_lists;
     // for (int i = 0; i < 10000000; i++)
     // {
     //     custom_lists.push_back(i);
     // }
     // cout << "block_size: " << block_size << ", block_time: " << block_time << "\n";
+    
+    
     cout << "hello world" << "\n";
 }
