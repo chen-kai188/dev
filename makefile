@@ -1,14 +1,15 @@
 CC=g++
-CFLAGS= -Wall
+CXXFLAGS:=-Wall -ggdb -Wextra -std=c++11 `pkg-config --cflags opencv4`
+LDFLAGS:=`pkg-config --libs opencv4`
 target=APP
 SRC=$(wildcard *.cpp)
 OBJ=$(patsubst %.cpp,%.o,$(SRC))
 
 $(target):$(OBJ)
-	$(CC) $^ -o $@ $(CFLAGS)
+	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
 $(OBJ):%.o:%.cpp
-	$(CC) -c $< -o $@ $(CFLAGS)
+	$(CC) -c $< -o $@ $(CXXFLAGS)
 
 .PHONY:clean
 clean:

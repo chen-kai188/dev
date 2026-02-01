@@ -20,7 +20,6 @@
 #include <dirent.h>
 
 using namespace std;
-
 struct ListNode
 {
     /* data */
@@ -1213,7 +1212,7 @@ public:
 
 extern const int THREAD_SIZE;
 extern queue<int> works;
-extern condition_variable cv;
+extern condition_variable condi_var;
 extern mutex mtx;
 void produce();
 void comsumer();
@@ -3012,5 +3011,16 @@ public:
 vector<string> wordBreak1(string s, vector<string>& wordDict);
 bool hasCycle(ListNode *head);
 
-vector<string> traverse_file_on_direction(const string& src_dir, const string& suffix);
-void transform_quality(const vector<string>& files, const string& dst_dir);
+struct VideoInfo
+{
+    string name;
+    string path;
+    double size; //g
+    VideoInfo() {}
+    VideoInfo(string name, string path, double size):name(name), path(path),size(size) {}
+};
+
+
+// vector<VideoInfo> traverse_file_on_direction(const string& src_dir, const string& suffix);
+// void transform_quality(const vector<VideoInfo>& files, const string& dst_dir);
+// void copy_file(const string& src_path, const string& dst_path);

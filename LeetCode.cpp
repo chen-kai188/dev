@@ -1,4 +1,6 @@
 #include "LeetCode.h"
+// #include <opencv4/opencv2/core.hpp>
+// #include <opencv4/opencv2/opencv.hpp>
 
 ListNode *reverseKGroup(ListNode *head, int k)
 {
@@ -2688,23 +2690,23 @@ template <class T>
 void Graph<T>::breadth_first_traversal(T value)
 {
     if(!nodes.count(value)) return;
-    shared_ptr<GraphNode<T> > node = nodes[value];
+    shared_ptr<GrapNode<T> > node = nodes[value];
 
-    set<shared_ptr<GraphNode<T> > > visited;
-    deque<shared_ptr<GraphNode<T> > > deque_nodes;
+    set<shared_ptr<GrapNode<T> > > visited;
+    deque<shared_ptr<GrapNode<T> > > deque_nodes;
     deque_nodes.push_back(node);
     visited.insert(node);
     while (!deque_nodes.empty())
     {
-        shared_ptr<GraphNode<T> > top = deque_nodes.front();
+        shared_ptr<GrapNode<T> > top = deque_nodes.front();
         deque_nodes.pop_front();
 
         cout << top->get_value() << "\n";
 
-        vector<shared_ptr<GraphNode<T> > >& child_nodes = top->get_nodes();
+        vector<shared_ptr<GrapNode<T> > >& child_nodes = top->get_nodes();
         for (int i=0; i<(int)child_nodes.size(); i++)
         {
-            shared_ptr<GraphNode<T> > child_node = child_nodes[i];
+            shared_ptr<GrapNode<T> > child_node = child_nodes[i];
             if(visited.count(child_node)) continue;
             
             visited.insert(child_node);
@@ -2717,19 +2719,19 @@ template <class T>
 void Graph<T>::depth_first_traversal(T value)
 {
     if(!nodes.count(value)) return;
-    shared_ptr<GraphNode<T> > node = nodes[value];
+    shared_ptr<GrapNode<T> > node = nodes[value];
     
     cout << value << "\n";
-    stack<shared_ptr<GraphNode<T> > > stack_nodes;
-    set<shared_ptr<GraphNode<T> > > visited;
+    stack<shared_ptr<GrapNode<T> > > stack_nodes;
+    set<shared_ptr<GrapNode<T> > > visited;
     stack_nodes.push(node);
     visited.insert(node);
     while (!stack_nodes.empty())
     {
-        shared_ptr<GraphNode<T> > top = stack_nodes.top();
+        shared_ptr<GrapNode<T> > top = stack_nodes.top();
         stack_nodes.pop();
 
-        vector<shared_ptr<GraphNode<T> > >& child_nodes = top->get_nodes();
+        vector<shared_ptr<GrapNode<T> > >& child_nodes = top->get_nodes();
         for (int i=0; i<(int)child_nodes.size(); i++)
         {
             if(visited.count(child_nodes[i])) continue;
@@ -2745,11 +2747,11 @@ void Graph<T>::depth_first_traversal(T value)
 template <class T>
 void Graph<T>::topological_sort(vector<T>& ans)
 {
-    queue<shared_ptr<GraphNode<T> > > queue_nodes;
-    map<shared_ptr<GraphNode<T> >, int> map_degrees;
+    queue<shared_ptr<GrapNode<T> > > queue_nodes;
+    map<shared_ptr<GrapNode<T> >, int> map_degrees;
     for (auto iter=nodes.begin(); iter!=nodes.end(); iter++)
     {
-        shared_ptr<GraphNode<T> > node = iter->second;
+        shared_ptr<GrapNode<T> > node = iter->second;
         if(node->get_in_quantity() == 0)
         {
             queue_nodes.push(node);
@@ -2759,12 +2761,12 @@ void Graph<T>::topological_sort(vector<T>& ans)
 
     while (!queue_nodes.empty())
     {
-        shared_ptr<GraphNode<T> > top = queue_nodes.front();
+        shared_ptr<GrapNode<T> > top = queue_nodes.front();
         queue_nodes.pop();
 
         ans.push_back(top->get_value());
         // cout << top->get_value() << "\n";
-        vector<shared_ptr<GraphNode<T> > >& child_nodes = top->get_nodes();
+        vector<shared_ptr<GrapNode<T> > >& child_nodes = top->get_nodes();
         for (int i=0; i<(int)child_nodes.size(); i++)
         {
             if(--map_degrees[child_nodes[i]] == 0)
@@ -4509,7 +4511,7 @@ void StrategyWay::execute_method(vector<int> &nums)
 
 const int THREAD_SIZE = 10;
 queue<int> works;
-condition_variable cv;
+condition_variable condi_var;
 mutex mtx;
 
 void produce()
@@ -4518,11 +4520,11 @@ void produce()
     {
         unique_lock<mutex> lock(mtx);
 
-        cv.wait(lock, []{ return works.size() < THREAD_SIZE; });
+        condi_var.wait(lock, []{ return works.size() < THREAD_SIZE; });
         works.push(i);
         cout << "run idx: " << i  << "\n";
         lock.unlock();
-        cv.notify_one();
+        condi_var.notify_one();
     }
 }
 
@@ -4531,13 +4533,13 @@ void comsumer()
     while (true)
     {
         unique_lock<mutex> lock(mtx);
-        cv.wait(lock, []{ return !works.empty(); });
+        condi_var.wait(lock, []{ return !works.empty(); });
         int data = works.front();
         works.pop();
         cout << "data: " << data << "\n";
 
         lock.unlock();
-        cv.notify_one();
+        condi_var.notify_one();
 
         if(data == 19) break;
     }
@@ -5027,52 +5029,106 @@ bool hasCycle(ListNode *head)
     return false;
 }
 
-vector<string> traverse_file_on_direction(const string &src_dir, const string& suffix)
-{
-    vector<string> all_videos;
-    deque<string> dirs;
-    dirs.push_back(src_dir);
-    while (!dirs.empty())
-    {
-        string top = dirs.front();
-        dirs.pop_front();
+// vector<VideoInfo> traverse_file_on_direction(const string &src_dir, const string& suffix)
+// {
+//     vector<VideoInfo> all_videos;
+//     deque<string> dirs;
+//     dirs.push_back(src_dir);
+//     while (!dirs.empty())
+//     {
+//         string top = dirs.front();
+//         dirs.pop_front();
 
-        DIR* dir = opendir(top.c_str());
-        struct dirent* ent;
+//         DIR* dir = opendir(top.c_str());
+//         struct dirent* ent;
 
-        while((ent = readdir(dir)) != nullptr)
-        {
-            string name  = ent->d_name;
-            if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
-                continue;
+//         while((ent = readdir(dir)) != nullptr)
+//         {
+//             string name  = ent->d_name;
+//             if(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
+//                 continue;
 
-            string fullPath = top + "/" + name;
-            struct stat st;
-            if(stat(fullPath.c_str(), &st) == -1)
-            {
-                cerr << "read error: " << top << "\n";
-                continue;
-            }
+//             string fullPath = top + "/" + name;
+//             struct stat st;
+//             if(stat(fullPath.c_str(), &st) == -1)
+//             {
+//                 cerr << "read error: " << top << "\n";
+//                 continue;
+//             }
 
-            if(S_ISDIR(st.st_mode))
-                dirs.push_back(fullPath);
-            else
-            {
-                if(strstr(ent->d_name, suffix.c_str()) != nullptr)
-                    all_videos.push_back(fullPath);
-            }        
-        }
-    }
-    return all_videos;
-}
+//             if(S_ISDIR(st.st_mode))
+//                 dirs.push_back(fullPath);
+//             else
+//             {
+//                 if(strstr(ent->d_name, suffix.c_str()) != nullptr)
+//                     all_videos.push_back(VideoInfo{string(name), fullPath, ((double)st.st_size/1024/1024/1024)});
+//             }        
+//         }
+//     }
+//     return all_videos;
+// }
 
-void transform_quality(const vector<string> &files, const string &dst_dir)
-{
-    
+// void transform_quality(const vector<VideoInfo> &files, const string &dst_dir)
+// {
+//     for (int i = 0; i < (int)files.size(); i++)
+//     {
+//         string file_path = dst_dir + "/" + files[i].name;
+//         if(files[i].size > 3.5)
+//         {
+//             copy_file(files[i].path, file_path);
+//             continue;
+//         }
 
-    
+//         cv::VideoCapture cap(files[i].path.c_str());
+//         if(!cap.isOpened())
+//         {
+//             cerr << files[i].path << "cannot open!!!" << "\n";
+//             continue;
+//         }
 
-}
+//         int width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
+//         int height = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+//         double fps = cap.get(cv::CAP_PROP_FPS);        
+
+//         cv::Size frame_size(width, height);
+
+//         int fourcc = cv::VideoWriter::fourcc('H','2','6','4');
+//         cv::VideoWriter writer(
+//             file_path.c_str(), 
+//             fourcc, 
+//             fps, 
+//             frame_size
+//         );
+
+//         if (!writer.isOpened()) 
+//         {
+//             cerr << "VideoWriter failed!!!\n";
+//             continue;
+//         }
+
+//         cv::Mat frame;
+//         while (cap.read(frame)) 
+//         {
+//             writer.write(frame);
+//         }
+//         cap.release();
+//         writer.release();
+//         std::cout << "完成！\n";
+//     }
+
+// }
+
+// void copy_file(const string &src_path, const string &dst_path)
+// {
+//     ifstream in(src_path.c_str(), ios::binary);
+//     ofstream out(dst_path.c_str(), ios::binary);
+//     if(!in || !out) return;
+
+//     out << in.rdbuf();
+
+//     in.close();
+//     out.close();
+// }
 
 void test()
 {
@@ -5201,7 +5257,5 @@ void test()
     //     custom_lists.push_back(i);
     // }
     // cout << "block_size: " << block_size << ", block_time: " << block_time << "\n";
-    
-    
     cout << "hello world" << "\n";
 }

@@ -1,0 +1,21 @@
+{
+    "tasks": [
+        {
+            "label": "build program",
+            "type": "shell",
+            "command": "make",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "编译 OpenCV 项目"
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "make clean"
+        }
+    ],
+    "version": "2.0.0"
+}
