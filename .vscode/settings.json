@@ -51,6 +51,5 @@
         "ratio": "cpp",
         "typeindex": "cpp",
         "*.hpp": "cpp",
-    },
-    "C_Cpp.errorSquiggles": "disabled"
+    }
 }

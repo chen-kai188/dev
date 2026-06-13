@@ -2457,6 +2457,7 @@ int attain_max_profit(const vector<Program> &programs, const int& k, int cost)
         return (program1.profit<program2.profit);
     };
 
+    
     priority_queue<Program, vector<Program>, decltype(sort_cost)> min_cost(sort_cost);
     priority_queue<Program, vector<Program>, decltype(sort_profit)> max_profit(sort_profit);
     for (int i=0; i<(int)programs.size(); i++)
@@ -5129,6 +5130,641 @@ bool hasCycle(ListNode *head)
 //     in.close();
 //     out.close();
 // }
+void ConnectedNet::handle(Context *context)
+{
+    cout << "ConnectedNet" << "\n";
+    context->setStratery(move(unique_ptr<NetWork>(new ClosedNet())));
+}
+
+void ClosedNet::handle(Context *context)
+{
+    cout << "ClosedNet" << "\n";
+    context->setStratery(nullptr);
+}
+
+int Islands(const vector<vector<char>> &matrix)
+{
+    int island_count = 0;
+    vector<int> Vec;
+    int rows = static_cast<int>(matrix.size());
+    for (int i = 0; i < rows; i++)
+    {
+        int cols = static_cast<int>(matrix[i].size());
+        for (int j = 0; j < cols; j++)
+        {
+            if(matrix[i][j] == '1')
+            {
+                island_count++;
+                Vec.emplace_back(i*cols + j);
+            }    
+        }
+    }
+    
+    unique_ptr<UnionMatrix<int> > m_union(new UnionMatrix<int>(Vec));
+    m_union->set_count(island_count);
+
+    for (int i = 0; i < rows; i++)
+    {
+        int cols = static_cast<int>(matrix[i].size());
+        for (int j = 0; j < cols; j++)
+        {
+            if(matrix[i][j] == '1')
+            {
+                if(i+1 < rows && matrix[i+1][j] == '1')
+                {
+                    m_union->set_same_union(i*cols + j, (i+1)*cols + j);
+                }
+
+                if(j+1 < cols && matrix[i][j+1] == '1')
+                {
+                    m_union->set_same_union(i*cols + j, i*cols + j + 1);
+                }
+            }   
+        }
+    }
+    return m_union->get_union_count();
+}
+
+int RottingOranges(vector<vector<int>> &matrix)
+{
+    int pos_change[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+
+    int rows = static_cast<int>(matrix.size());
+    int cols = static_cast<int>(matrix[0].size());
+
+    int oranges = 0;
+    auto bfs = [&](deque<pair<int, int> > m_deque) -> int
+    {
+        int times = 0;
+        while (!m_deque.empty())
+        {
+            bool diffusion = false;
+            int deque_size = static_cast<int>(m_deque.size());
+            
+            for (int i = 0; i < deque_size; i++)
+            {
+                auto front = m_deque.front();
+                m_deque.pop_front();
+
+                for (int i = 0; i < 4; i++)
+                {
+                    auto pos = make_pair(front.first+pos_change[i][0], front.second+pos_change[i][1]);
+                    if(pos.first < 0 || pos.second < 0 || pos.first >= rows || pos.second >= cols)
+                        continue;
+                    
+                    if(matrix[pos.first][pos.second] == 1)
+                    {
+                        m_deque.emplace_back(pos);
+                        oranges--;
+                        diffusion = true;
+                        matrix[pos.first][pos.second] = 2;
+                    }
+                }
+            }
+            if (diffusion) times++;
+        }
+        return times;
+    };
+    
+    deque<pair<int, int> > m_deque;
+    for (int i = 0; i < rows; i++)
+    {
+        int cols = static_cast<int>(matrix[i].size());
+        for (int j = 0; j < cols; j++)
+        {
+            if(matrix[i][j] == 2)
+            {
+                m_deque.emplace_back(i, j);
+            }
+            if(matrix[i][j] == 1)
+            {
+                oranges++;
+            }
+        }
+    };
+
+    int max_times = bfs(m_deque);
+    return oranges == 0?max_times:-1;
+}
+
+vector<string> WordLadder(const string &start_str, const string &end_str, const vector<string> &wordlist)
+{
+    //rewrite again
+    if(find(wordlist.begin(), wordlist.end(), end_str) == wordlist.end())
+        return {};
+
+    unordered_map<string, vector<string> > matchs;
+    for (size_t i = 0; i < wordlist.size(); i++)
+    {
+        for (size_t j = 0; j < wordlist[i].size(); j++)
+        {
+            string word = wordlist[i];
+            word[j] = '*';
+            matchs[word].push_back(wordlist[i]);
+        }
+    }
+    
+    auto bfs = [=](const string& str) -> unordered_map<string, vector<string> >
+    {
+        unordered_map<string, vector<string> > parents;
+
+        queue<string> m_queue;
+        m_queue.push(str);
+
+        bool finded = false;
+        unordered_set<string> visited = {str};
+        while (!m_queue.empty() && !finded)
+        {
+            int queue_size = static_cast<int>(m_queue.size());
+
+            unordered_set<string> level_visited;
+            for (int i = 0; i < queue_size; i++)
+            {
+                string front = m_queue.front();
+                m_queue.pop();
+
+                for (size_t j = 0; j < front.size(); j++)
+                {
+                    string word = front;
+                    word[j] = '*';
+                    if(!matchs.count(word)) continue;
+
+                    vector<string> childs = matchs.find(word)->second;
+                    for (size_t k = 0; k < childs.size(); k++)
+                    {
+                        if(visited.count(childs[k])) continue;
+
+                        if(!level_visited.count(childs[k]))
+                        {
+                            m_queue.push(childs[k]);
+                            level_visited.insert(childs[k]);
+                        }
+                        parents[front].push_back(childs[k]);
+                    }
+                }
+                if(front == end_str) finded = true;
+            }
+            visited.insert(level_visited.begin(), level_visited.end());
+        }
+        return parents;
+    };
+    
+    auto parents = bfs(start_str);
+
+    vector<string> one_path = {start_str};
+    function<void(vector<vector<string> >&, const string&)> dfs = [&](vector<vector<string> >& paths, const string& str)
+    {
+        // if(!parents.count(str)) return;
+
+        if(str == end_str)
+        {
+            paths.push_back(one_path);
+            return;
+        }
+
+        for (size_t i = 0; i < parents[str].size(); i++)
+        {
+            one_path.push_back(parents[str][i]);
+            dfs(paths, parents[str][i]);
+            one_path.pop_back();
+        }
+    };
+    vector<vector<string> > paths;
+    dfs(paths, start_str);
+    return paths[0];
+}
+
+bool CourseSchedule(int numCourses, const vector<pair<int, int> > &prerequisites)
+{
+    vector<int> nodes_state(numCourses, 0);
+    unordered_map<int, vector<int> > edges;
+    for (size_t i = 0; i < prerequisites.size(); i++)
+    {
+        nodes_state[prerequisites[i].first]++;
+        edges[prerequisites[i].second].push_back(prerequisites[i].first);
+    }
+
+    deque<int> m_deque;
+    for (int i = 0; i < static_cast<int>(nodes_state.size()); i++)
+    {
+        if(nodes_state[i] == 0)
+            m_deque.push_back(i);
+    }
+    
+    int counts = 0;
+    while (!m_deque.empty())
+    {
+        int size = m_deque.size();
+        for (int i = 0; i < size; i++)
+        {
+            int start_node = m_deque.front();
+            m_deque.pop_front();
+
+            counts++;
+            if(!edges.count(start_node)) continue;
+
+            for (size_t j = 0; j < edges[start_node].size(); j++)
+            {
+                if(--nodes_state[edges[start_node][j]] == 0)
+                {
+                    m_deque.push_back(edges[start_node][j]);
+                }
+            }
+        }
+    }
+    return counts == numCourses;
+}
+
+vector<int> ListCourseSchedule(int numCourses, const vector<pair<int, int>> &prerequisites)
+{
+    vector<int> indegree(numCourses, 0);
+    unordered_map<int, vector<int> > edges;
+    for (size_t i = 0; i < prerequisites.size(); i++)
+    {
+        indegree[prerequisites[i].first]++;
+        edges[prerequisites[i].second].push_back(prerequisites[i].first);
+    }
+
+    // stack<pair<int, int> > starts;
+    deque<int> m_deque;
+    for (size_t i = 0; i < indegree.size(); i++)
+    {
+        if(indegree[i] == 0) {
+            m_deque.push_back(i);
+            // starts.emplace(static_cast<int>(i), 0);
+        }
+    }
+    vector<int> paths;
+
+    while (!m_deque.empty())
+    {
+        int deque_size = static_cast<int>(m_deque.size());
+        for (int i = 0; i < deque_size; i++)
+        {
+            int front = m_deque.front();
+            m_deque.pop_front();
+
+            paths.push_back(front);
+
+            if(!edges.count(front)) continue;
+            for (size_t j = 0; j < edges[front].size(); j++)
+            {
+                if(--indegree[edges[front][j]] == 0)
+                {
+                    m_deque.push_back(edges[front][j]);
+                }
+            }
+        }
+    }
+    return paths;
+}
+
+int Robbery(const vector<int> &data)
+{
+    vector<int> dcp(data.size() + 1, 0);
+    dcp[0] = 0; dcp[1] = data[0];
+    for (size_t i = 1; i < data.size(); i++)
+    {
+        dcp[i+1] = max(dcp[i], dcp[i-1] + data[i]);
+    }
+    return dcp[data.size() + 1];
+}
+
+int RobberyII(const vector<int> &data)
+{
+    int size = static_cast<int>(data.size());
+    vector<int> dcp_rf(size, 0);
+    dcp_rf[0] = 0; dcp_rf[1] = data[0];
+    for (size_t i = 2; i < data.size() - 1; i++)
+    {
+        dcp_rf[i] = max(dcp_rf[i-1], dcp_rf[i-2] + data[i-1]);
+    }
+
+    vector<int> dcp_rb(size, 0);
+    dcp_rb[0] = 0; dcp_rb[1] = data[1];
+    for (size_t i = 2; i < data.size(); i++)
+    {
+        dcp_rb[i] = max(dcp_rb[i-1], dcp_rb[i-2] + data[i-1]);
+    }
+
+    return max(dcp_rf[size], dcp_rb[size]);
+}
+
+bool PartitionEqualSubsetSum(const vector<int> &data)
+{
+    int total_sum = accumulate(data.begin(), data.end(), 0);
+    if(total_sum & 1) return false;
+
+    int target = (total_sum >> 1);
+
+    vector<bool> dcp(target + 1, false);
+
+    dcp[0] = true;
+    for (size_t i = 0; i < data.size(); i++)
+    {
+        for (int j = target; j >= data[i]; j--)
+        {
+            dcp[j] = dcp[j] | dcp[j-data[i]];
+        }
+        if(dcp[target]) return true;
+    }
+    return dcp[target];
+}
+
+int BackpackProblem(int max_capacity, const vector<int> &weights, const vector<int> &values)
+{
+    int thing_count = static_cast<int>(weights.size());
+
+    vector<vector<int> > dcp(thing_count + 1, vector<int>(max_capacity + 1, 0));
+    for (int i = 0; i < thing_count; i++)
+    {
+        for (int j = weights[i]; j <= max_capacity; j++)
+        {
+            dcp[i+1][j] = max(dcp[i][j], dcp[i+1][j - weights[i]] + values[i]);
+        }
+    }
+    return dcp[thing_count][max_capacity];
+}
+
+int LongestIncreasingSubsequence(const vector<int> &values)
+{
+    int length = static_cast<int>(values.size());
+    vector<int> dcp(length + 1, 0);
+
+    dcp[0] = 1;
+
+    int longest_count = 0;
+    for (size_t i = 1; i < values.size(); i++)
+    {
+        int max_continuous = 0;
+        for (int j = i; j >= 0; j--)
+        {
+            if(values[i] > values[j])
+            {
+                max_continuous = max(dcp[j], max_continuous);
+            }
+        }
+        dcp[i] = max_continuous + 1;
+
+        longest_count = max(longest_count, dcp[i]);
+    }
+    return longest_count;
+}
+
+bool HighConcurrency::build_epoll(uint32_t portId)
+{
+    build_server(portId);
+    _epoll_id = epoll_create1(EPOLL_CLOEXEC);
+    if(_epoll_id == -1)
+    {
+        perror("epoll_create1: ");
+
+        ::close(_server_id);
+        ::close(_epoll_id);
+        return false;
+    }
+    struct epoll_event ev;
+    ev.events = EPOLLET | EPOLLIN;
+    ev.data.fd = _server_id;
+    epoll_ctl(_epoll_id, EPOLL_CTL_ADD, _server_id, &ev);
+
+    EventType events(kInitEventListSize);
+    while (true)
+    {
+        int sock_num = epoll_wait(_epoll_id, events.data(), kInitEventListSize, 0);
+        if(sock_num == -1)
+        {
+            if(errno == EINTR)
+                continue;
+
+            perror("epoll_wait: ");
+            break;
+        }
+
+        for (int i = 0; i < sock_num; i++)
+        {
+            int fd = events.at(i).data.fd;
+
+            if(events.at(i).events == EPOLLIN)
+            {
+                if(fd == _server_id)
+                {
+                    struct sockaddr_in addr;
+                    uint32_t addr_length = sizeof(addr);
+                    int client_fd = ::accept(_server_id, (sockaddr*)&addr, &addr_length);
+
+                    set_nonblock(client_fd);
+
+                    ev.events = EPOLLET | EPOLLIN | EPOLLOUT;
+                    ev.data.fd = client_fd;
+                    epoll_ctl(_epoll_id, EPOLL_CTL_ADD, client_fd, &ev);
+                }
+                else
+                {
+                    while (true)
+                    {
+                        BUffType buff(kInitReadSize);
+                        int read_size = ::read(fd, buff.data(), kInitReadSize);
+                        if(read_size == 0)
+                            break;
+                        else if(read_size == -1)
+                        {
+                            if(errno == EINTR)
+                                continue;
+                        }
+                        else
+                        {
+                            buff.resize(read_size);
+                            cout << buff.data();
+                        }
+                    }
+
+                }
+            }
+            else if(events.at(i).events == EPOLLOUT)
+            {
+                
+            }
+        }
+    }
+    return false;
+}
+
+void HighConcurrency::set_nonblock(int fd)
+{
+    int flag = fcntl(fd, F_GETFL, 0);
+    flag |= O_NONBLOCK;
+
+    fcntl(fd, F_SETFL, flag);
+}   
+
+bool HighConcurrency::build_server(uint32_t portId)
+{
+    int sock_fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    if(sock_fd == -1)
+    {
+        perror("socket: ");
+        return false;
+    }
+
+    struct sockaddr_in addr;
+    addr.sin_port = htons(portId);
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+
+    if(::bind(sock_fd, (sockaddr*)&addr, sizeof(addr)) == -1)
+    {
+        perror("bind: ");
+        ::close(sock_fd);
+        return false;
+    }
+    int opt = 1;
+    if(::setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+    {
+        perror("setsockopt SO_REUSEADDR: ");
+        ::close(sock_fd);
+        return false;
+    }
+
+    if(::listen(sock_fd, 128) == -1)
+    {
+        ::close(sock_fd);
+        perror("listen: ");
+        return false;
+    }
+    return true;
+}
+
+int Palindrome(const string &str)
+{
+    int str_len = static_cast<int>(str.length());
+
+    int max_len = INT32_MIN;
+    string palind_str;
+    auto isPalind = [&](int l_pos, int r_pos) -> int
+    {
+        while (l_pos>=0 && r_pos<str_len && str[l_pos]==str[r_pos])
+        {
+            int len = r_pos - l_pos + 1;
+            if(len > max_len)
+            {
+                palind_str = str.substr(l_pos, len);
+                max_len = len;
+            }
+            l_pos--;
+            r_pos++;
+        }
+        return r_pos - l_pos - 1;
+    };
+
+    for (size_t i = 0; i < str.size(); i++)
+    {
+        isPalind(i, i);
+        isPalind(i, i+1);
+    }
+    return max_len;
+}
+
+string PalindromeII(const string &str)
+{
+    int str_len = static_cast<int>(str.length());
+    vector<vector<bool> > dcp(str_len, vector<bool>(str_len, false));
+    for (int i = 0; i < str_len; i++)
+    {
+        dcp[i][i] = true;
+    }
+
+    for (int len = 2; len <= str_len; len++)
+    {
+        for (int i = 0; i < len; i++)
+        {
+
+        }
+
+    }
+    return string();
+}
+
+int BurstBalloons(const vector<int> &data)
+{
+    int data_len = static_cast<int>(data.size());
+
+    vector<int> src_data(data_len + 2, 1);
+    for (int i = 0; i < data_len; i++)
+        src_data[i+1] = data[i];
+
+    int src_len = static_cast<int>(src_data.size());
+    vector<vector<int> > dcp(src_len, vector<int>(src_len, 0));
+    for (int len = 3; len <= src_len; len++)
+    {
+        for (int i = 0; i < src_len - len + 1; i++)
+        {
+            int j = len + i - 1;
+
+            for (int k = i+1; k < j; k++)
+            {
+                int val = src_data[i]*src_data[k]*src_data[j];
+
+                dcp[i][j] = max(dcp[i][j],  dcp[i][k] + dcp[k][j] + val);
+            }
+        }
+    }
+    return dcp[0][src_len-1];
+}
+
+int UniquePaths(int rows, int cols)
+{
+    stack<tuple<pair<int, int>, vector<pair<int, int> > > > m_stack;
+    m_stack.push({{0,0},{{0,0}}});
+
+    vector<vector<pair<int, int> > > rets;
+    while (!m_stack.empty())
+    {
+        auto top = m_stack.top();
+        m_stack.pop();
+
+
+        if(get<0>(top).first == (rows-1) && get<0>(top).second == (cols-1))
+        {
+            rets.push_back(get<1>(top));
+            continue;
+        }
+
+        if(get<0>(top).first + 1 < rows)
+        {
+            int x = get<0>(top).first+1;
+            int y = get<0>(top).second;
+            auto path = get<1>(top);
+
+            path.push_back({x, y});
+            m_stack.push({{x, y}, path});
+        }
+
+        if(get<0>(top).second + 1 < cols)
+        {
+            int x = get<0>(top).first;
+            int y = get<0>(top).second+1;
+            auto path = get<1>(top);
+
+            path.push_back({x, y});
+            m_stack.push({{x, y}, path});
+        }
+
+    }
+    return rets.size();
+}
+
+int CoinChange(const vector<int> &coins, int mount)
+{
+    int coin_len = static_cast<int>(coins.size());
+    
+
+
+
+
+
+    return 0;
+}
 
 void test()
 {
@@ -5257,5 +5893,25 @@ void test()
     //     custom_lists.push_back(i);
     // }
     // cout << "block_size: " << block_size << ", block_time: " << block_time << "\n";
+    // vector<int> a = {1,2,3,4,5};
+    // vector<int> inserted = { 12,3};
+
+    // vector<int>::iterator iter = inserted.begin() + 1;
+    // copy(a.begin(), a.end(), inserter(inserted, iter));
+    // vector<int> inserted = { 12,3};
+    // copy(inserted.begin(), inserted.end(), ostream_iterator<int>(cout, " "));
+    // Parser parse("(2 + 5)*12 + 12 + 3 * 2");
+    // auto ret = parse.calculate();
+
+    // cout << ret->eval() << "\n";
+    // auto ret = WordLadder("red", "tax", {"ted","tex","red","tax","tad","den","rex","pee"});
+    // ListCourseSchedule(4, {{1,0},{2,0},{3,1},{3,2}});
+    // auto ret = LongestIncreasingSubsequence({0,1,0,3,2,3});
+    // cout << ret << "\n";
+    // cout << static_cast<pid_t>(::syscall(SYS_gettid)) << "\n";
+
+    cout << UniquePaths(3, 2) << "\n";
     cout << "hello world" << "\n";
 }
+
+

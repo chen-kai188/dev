@@ -18,6 +18,15 @@
 #include <utility>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <memory>
+#include <ext/pool_allocator.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/epoll.h>
+#include <fcntl.h>
+#include <syscall.h>
 
 using namespace std;
 struct ListNode
@@ -759,7 +768,6 @@ private:
     map<T, UnionNode<T>* > nodes;
     map<UnionNode<T>*, int> set_size;
     map<UnionNode<T>*, UnionNode<T>* > set_parent;
-
 };
 
 struct User
@@ -1369,7 +1377,7 @@ public:
     }
 };
 
-template<typename T, template<typename> class DefaultFactory = CreateFactory>
+template<typename T, template<typename> class DefaultFactory = CreateFactory >
 class Factory
 {
 private:
@@ -2006,7 +2014,7 @@ public:
         swap(temp);
         return *this;
     }
-    Ret operator()(Args... args)
+    Ret operator()(Args&&... args)
     {
         return callback_->invoke(forward<Args>(args)...);
     }
@@ -3024,3 +3032,1143 @@ struct VideoInfo
 // vector<VideoInfo> traverse_file_on_direction(const string& src_dir, const string& suffix);
 // void transform_quality(const vector<VideoInfo>& files, const string& dst_dir);
 // void copy_file(const string& src_path, const string& dst_path);
+
+template<bool _IsMove = true, typename _II, typename _OI>
+auto process(_II a1, _OI a2) -> decltype(a1+a2)
+{
+    return a1 + a2;
+}
+
+class Computer
+{
+public:
+    virtual ~Computer() = default;
+    virtual void platform() const = 0;
+};
+
+class LinuxComputer: public Computer
+{
+public:
+    virtual ~LinuxComputer() = default;
+    virtual void platform() const override
+    {
+        cout << "draw on Linux." << "\n";
+    }
+};
+
+class WindowsComputer: public Computer
+{
+public:
+    virtual ~WindowsComputer() = default;
+    virtual void platform() const override
+    {
+        cout << "draw on Windows." << "\n";
+    }
+};
+
+class Graphics
+{
+protected:
+    unique_ptr<Computer> _computer;
+
+public:
+    Graphics(unique_ptr<Computer> computer):_computer(move(computer)){}
+    virtual ~Graphics() = default;
+    virtual void draw() = 0;
+};
+
+class Circle : public Graphics
+{
+private:
+    double _radius = 0.0f;
+
+public:
+    using Graphics::Graphics;
+    virtual ~Circle() = default;
+    virtual void draw() override
+    {
+        _computer->platform();
+        cout << "draw Circle: " << "and area: " << (3.1414926*pow(_radius, 2)) << "\n";
+    }
+public:
+    void set_radius(double radius)
+    {
+        this->_radius = radius;
+    }
+
+};
+
+class Diamond: public Graphics
+{
+private:
+    int _x = 0;
+    int _y = 0;
+
+public:
+    using Graphics::Graphics;
+    virtual ~Diamond() = default;
+    virtual void draw() override
+    {
+        // _IsUnused(x);
+        _computer->platform();
+        cout << "draw Diamond." << " and area: " << (_x*_y) << "\n";
+    }
+public:
+    void set_LW_Value(int x, int y)
+    {
+        _x = x;
+        _y = y;
+    }
+};
+// unique_ptr<Computer> computer(new LinuxComputer());
+// unique_ptr<Graphics> m_draw(new Diamond(move(computer)));
+
+// Diamond* m_circle = dynamic_cast<Diamond*>(m_draw.get());
+
+// m_circle->set_LW_Value(12, 12);
+// m_circle->draw();
+
+template<typename T, typename Container = vector<T> >
+class MyTest
+{
+Container _container;
+public:
+    void push_back(const T& value)
+    {
+        _container.push_back(value);
+    }
+
+};
+
+template<typename T, template<typename...> class Container = vector>
+class TemplacParams
+{
+private:
+    Container<T> _container;
+public:
+    void push_back(const T& value)
+    {
+        _container.push_back(value);
+    }
+};
+
+class Shape
+{
+public:
+    virtual ~Shape() = default;
+    virtual void draw() const = 0;
+
+};
+
+class RectProduct : public Shape
+{
+public:
+    RectProduct() = default;
+    virtual ~RectProduct() = default;
+    virtual void draw() const override
+    {
+        cout << "RectProduct." << "\n";
+    }
+
+};
+
+class CircleProduct : public Shape
+{
+public:
+    CircleProduct() = default;
+    virtual ~CircleProduct() = default;
+    virtual void draw() const override
+    {
+        cout << "CircleProduct." << "\n";
+    }
+
+};
+
+class CustomFactoryAbstract
+{
+public:
+    virtual ~CustomFactoryAbstract() = default;
+    virtual unique_ptr<Shape> create_rect_product() = 0;
+    virtual unique_ptr<Shape> create_circle_product() = 0;
+};
+
+class UserCustomFactory : public CustomFactoryAbstract
+{ 
+public:
+    UserCustomFactory() = default;
+    virtual ~UserCustomFactory() = default;
+    virtual unique_ptr<Shape> create_rect_product() override
+    {
+        return unique_ptr<Shape>(new RectProduct());
+    }
+    virtual unique_ptr<Shape> create_circle_product() override
+    {
+        return unique_ptr<Shape>(new CircleProduct());
+    }
+};
+
+// unique_ptr<CustomFactoryAbstract> m_factory(new UserCustomFactory());
+// 
+// auto m_product = m_factory->create_circle_product();
+// m_product->draw();
+class Context;
+class NetWork
+{
+public:
+    virtual ~NetWork() = default;
+    virtual void handle(Context* context) = 0;
+};
+
+class ClosedNet;
+class ConnectedNet : public NetWork
+{
+public:
+    virtual ~ConnectedNet() = default;
+    ConnectedNet() = default;
+    virtual void handle(Context* context);
+};
+
+class ClosedNet : public NetWork
+{
+public:
+    ClosedNet() = default;
+    virtual ~ClosedNet() = default;
+    virtual void handle(Context* context);
+};
+
+class Context
+{
+private:
+    unique_ptr<NetWork> _netWork;
+
+public:
+    Context(unique_ptr<NetWork> netWork):_netWork(move(netWork)){}
+
+    void setStratery(unique_ptr<NetWork> strategy)
+    {
+        _netWork = move(strategy);
+    }
+
+    void ConnectNet()
+    {
+        _netWork->handle(this);
+    }
+};
+// unique_ptr<NetWork> netWork(new ConnectedNet());
+// unique_ptr<Context> context(new Context(move(netWork)));
+// context->ConnectNet();
+// context->ConnectNet();
+
+class Serializer {
+private:
+    std::ostream& out;
+
+public:
+    Serializer(std::ostream& o) : out(o) {}
+
+    template<typename T>
+    void writePod(const T& data) 
+    {
+        out.write(reinterpret_cast<const char*>(&data), sizeof(T));
+    }
+
+    void writeString(const std::string& str) 
+    {
+        size_t size = str.size();
+        writePod(size);
+        out.write(str.data(), size);
+    }
+
+    template<typename T>
+    void writeVector(const std::vector<T>& vec) 
+    {
+        size_t size = vec.size();
+        writePod(size);
+        for (const auto& v : vec)
+            (*this) << v;
+    }
+
+    template<typename T>
+    Serializer& operator<<(const T& value) 
+    {
+        if constexpr (std::is_arithmetic<T>::value) 
+        {
+            writePod(value);
+        } 
+        else 
+        {
+            value.serialize(*this);
+        }
+        return *this;
+    }
+
+    Serializer& operator<<(const std::string& str)
+    {
+        writeString(str);
+        return *this;
+    }
+
+    template<typename T>
+    Serializer& operator<<(const std::vector<T>& vec) 
+    {
+        writeVector(vec);
+        return *this;
+    }
+};
+
+class Deserializer 
+{
+private:
+    istream& in;
+public:
+    Deserializer(istream& i) : in(i) {}
+    template<typename T>
+    void readPod(T& data) 
+    {
+        in.read(reinterpret_cast<char*>(&data), sizeof(T));
+    }
+
+    void readString(std::string& str) 
+    {
+        size_t size;
+        readPod(size);
+        str.resize(size);
+        in.read(&str[0], size);
+    }
+
+    template<typename T>
+    void readVector(std::vector<T>& vec) 
+    {
+        size_t size;
+        readPod(size);
+        vec.resize(size);
+        for (auto& v : vec)
+            (*this) >> v;
+    }
+
+    template<typename T>
+    Deserializer& operator>>(T& value) 
+    {
+        if constexpr (std::is_arithmetic<T>::value) 
+        {
+            readPod(value);
+        } 
+        else 
+        {
+            value.deserialize(*this);
+        }
+        return *this;
+    }
+
+    Deserializer& operator>>(std::string& str) 
+    {
+        readString(str);
+        return *this;
+    }
+
+    template<typename T>
+    Deserializer& operator>>(std::vector<T>& vec) 
+    {
+        readVector(vec);
+        return *this;
+    }
+};
+
+template<typename T>
+class Reflect;
+
+class Serialization
+{
+private:
+    ostream& out;
+
+public:
+    Serialization(ostream& out):out(out){}
+    virtual ~Serialization() = default;
+
+    template<typename T>
+    Serialization& operator<<(const T& value)
+    {
+        serialize(value);
+        return *this;
+    }
+
+    template<typename T>
+    Serialization& operator<<(const vector<T>& value)
+    {
+        size_t size = value.size();
+        WritePod(size);
+        for (size_t i = 0; i < size; i++)
+        {
+            (*this)<<value[i];
+        }
+        return *this;
+    }
+
+    Serialization& operator<<(const string& value)
+    {
+        WriteStr(value);
+        return *this;
+    }
+
+private:
+    template<typename T>
+    void WritePod(const T& value)
+    {
+        out.write(reinterpret_cast<const char*>(&value), sizeof(T));
+    }
+
+    void WriteStr(const string& value)
+    {
+        size_t size = value.size();
+        WritePod(size);
+
+        out.write(value.data(), size);
+    }
+
+    template<typename T>
+    typename enable_if<is_arithmetic<T>::value>::type 
+        serialize(const T& value)
+    {
+        WritePod(value);
+    }
+
+    template<typename T>
+    typename enable_if<!is_arithmetic<T>::value>::type 
+        serialize(const T& value)
+    {
+        auto members = Reflect<T>::get(const_cast<T&>(value));
+        SerializeTuple(members);
+    }
+
+    template<size_t I = 0, typename... Args>
+    typename enable_if<I == sizeof...(Args)>::type SerializeTuple(const tuple<Args...>&){}
+
+    template<size_t I = 0, typename... Args>
+    typename enable_if<I < sizeof...(Args)>::type SerializeTuple(const tuple<Args...>& t)
+    {
+        (*this) << get<I>(t);
+        SerializeTuple<I+1>(t);
+    }
+};
+
+class DeSerialization
+{
+private:
+    istream& in;
+
+public:
+    DeSerialization(istream& in):in(in){}
+
+    template<typename T>
+    DeSerialization& operator>>(T& value)
+    {
+        deserialize(value);
+        return *this;
+    }
+
+    template<typename T>
+    DeSerialization& operator>>(vector<T>& value)
+    {
+        size_t size;
+        ReadPod(size);
+
+        value.resize(size);
+        for (size_t i = 0; i < size; i++)
+        {
+            (*this)>>value[i];
+        }
+        return *this;
+    }
+
+private:
+    template<typename T>
+    void ReadPod(T& value)
+    {
+        in.read(reinterpret_cast<char*>(&value), sizeof(T));
+    }
+
+    template<typename T>
+    typename enable_if<is_arithmetic<T>::value>::type 
+        deserialize(T& value)
+    {
+        ReadPod(value);
+    }
+
+    void deserialize(string& value)
+    {
+        size_t size;
+        ReadPod(size);
+
+        value.resize(size);
+        in.read(&value[0], size);
+    }
+
+    template<typename T>
+    typename enable_if<!is_arithmetic<T>::value>::type 
+        deserialize(T& value)
+    {
+        auto members = Reflect<T>::get(value);
+        DeserializeTuple(members);
+    }
+
+    template<size_t I = 0, typename... Args>
+    typename enable_if<I == sizeof...(Args)>::type DeserializeTuple(tuple<Args...>&){}
+
+    template<size_t I = 0, typename... Args>
+    typename enable_if<I < sizeof...(Args)>::type DeserializeTuple(tuple<Args...>& t)
+    {
+        (*this) >> get<I>(t);
+        DeserializeTuple<I+1>(t);
+    }
+};
+
+#define REFLECT1(TYPE, M1) \
+template<> struct Reflect<TYPE> \
+{ \
+    static auto get(TYPE& obj) -> decltype(tie(obj.M1)) \
+    { \
+        return tie(obj.M1); \
+    } \
+};
+
+#define REFLECT2(TYPE, M1, M2) \
+template<> struct Reflect<TYPE> \
+{ \
+    static auto get(TYPE& obj) -> decltype(tie(obj.M1, obj.M2)) \
+    { \
+        return tie(obj.M1, obj.M2); \
+    } \
+};
+
+#define REFLECT3(TYPE, M1, M2, M3) \
+template<> struct Reflect<TYPE> \
+{ \
+    static auto get(TYPE& obj) -> decltype(tie(obj.M1, obj.M2, obj.M3)) \
+    { \
+        return tie(obj.M1, obj.M2, obj.M3); \
+    } \
+};
+
+#define REFLECT4(TYPE, M1, M2, M3, M4) \
+template<> struct Reflect<TYPE> \
+{ \
+    static auto get(TYPE& obj) -> decltype(tie(obj.M1, obj.M2, obj.M3, obj.M4)) \
+    { \
+        return tie(obj.M1, obj.M2, obj.M3, obj.M4); \
+    } \
+};
+
+struct People
+{
+    string Name;
+    string Id;
+    int Age;
+    vector<string> socres;
+    People() = default;
+};
+
+REFLECT4(People, Name, Id, Age, socres);
+
+// People people{"ernestc", "20131033", 19, {"21", "123"}};
+
+// ofstream outFile("db.bin", ios::binary | ios::trunc);
+
+// unique_ptr<Serialization> m_ser(new Serialization(outFile));
+// // (*m_ser.get()) << string("1234");
+// (*m_ser.get()) << people;
+// outFile.close();
+
+// ifstream inFile("db.bin", ios::in);
+// unique_ptr<DeSerialization> m_deser(new DeSerialization(inFile));
+
+// People data;
+// (*m_deser.get()) >> data;
+
+enum class Operator { Number, ADD, SUB, MUL, DIV, LPARAM, RPARAM, END};
+
+struct Token
+{
+    Operator type;
+    int number;
+    Token():type(Operator::END){}
+    Token(Operator type, int number = 0):type(type), number(number){}
+};
+
+class Lexer
+{
+private:
+    string text;
+    int pos;
+
+public:
+    Lexer(const string& text):text(text), pos(0) {}
+    virtual ~Lexer() = default;
+    Token nextToken()
+    {
+        while (pos<static_cast<int>(text.size()))
+        {
+            char C = text.at(pos);
+            if(isspace(C)) 
+            {
+                pos++;
+                continue;
+            }
+            
+            if(isdigit(C))  return Token(Operator::Number, number());
+
+            pos++;
+            switch (C)
+            {
+            case '+':
+                return Token(Operator::ADD);
+            case '-':
+                return Token(Operator::SUB);
+            case '/':
+                return Token(Operator::DIV);
+            case '*':
+                return Token(Operator::MUL);
+            case '(':
+                return Token(Operator::LPARAM);
+            case ')':
+                return Token(Operator::RPARAM);
+            default:
+                return Token(Operator::END);
+            }
+        }
+    }
+private:
+    int number()
+    {
+        int target = 0;
+        while (pos < static_cast<int>(text.size()) && isdigit(text[pos]))
+        {
+            target = target * 10 + text[pos] - '0';
+            pos++;
+        }
+        return target;
+    }
+};
+
+class Expr
+{
+public:
+    virtual int eval() = 0;
+    virtual ~Expr() = default;
+};
+
+class NumberExpr : public Expr
+{
+private:
+    int number;
+
+public:
+    NumberExpr(int number):number(number){}
+    virtual ~NumberExpr() = default;
+    virtual int eval() override
+    {
+        return number;
+    }
+};
+
+class FormulaExpr : public Expr
+{
+private:
+    char op;
+    unique_ptr<Expr> lExp;
+    unique_ptr<Expr> rExp;
+public:
+    FormulaExpr(const char& op, unique_ptr<Expr> lExp, unique_ptr<Expr> rExp):op(op), lExp(move(lExp)), rExp(move(rExp)){}
+    virtual ~FormulaExpr() = default;
+    virtual int eval() override
+    {
+        int lVal = lExp->eval();
+        int rVal = rExp->eval();
+        switch (op)
+        {
+        case '+':
+            return lVal + rVal;
+        case '-':
+            return lVal - rVal;
+        case '*':
+            return lVal * rVal;
+        case '/':
+            return lVal / rVal;
+        default:
+            throw "operation is incollected";
+        }
+    }
+};
+
+class Parser 
+{
+private:
+    Lexer lexer;
+    Token current;
+
+public:
+    Parser(const string& text):lexer(text) 
+    {
+        current = lexer.nextToken();
+    }
+    unique_ptr<Expr> calculate() { return expr(); }
+private:
+    void eat(Operator type)
+    {
+        if(current.type == type)
+        {
+            current = lexer.nextToken();
+        }
+        else
+            throw "eat failed!!!";
+    }
+
+    unique_ptr<Expr> expr()
+    {
+        auto node = trim();
+        while (current.type == Operator::ADD || current.type == Operator::SUB)
+        {
+            char op = current.type == Operator::ADD? '+':'-';
+            eat(current.type);
+            node = move(unique_ptr<Expr>(new FormulaExpr(op, move(node), move(trim())))); 
+        }
+        return node;
+    }
+
+    unique_ptr<Expr> trim()
+    {
+        auto node = factor();
+        while (current.type == Operator::MUL || current.type == Operator::DIV)
+        {
+            char op = current.type == Operator::MUL? '*':'/';
+            eat(current.type);
+            node = move(unique_ptr<Expr>(new FormulaExpr(op, move(node), move(factor())))); 
+        }
+        return node;
+    }
+
+    unique_ptr<Expr> factor()
+    {
+        if(current.type == Operator::Number)
+        {
+            int val = current.number;
+            eat(current.type);
+            return unique_ptr<Expr>(new NumberExpr(val));
+        }
+
+        if(current.type == Operator::LPARAM)
+        {
+            eat(Operator::LPARAM);
+            auto node = expr();
+            eat(Operator::RPARAM);
+            return node;
+        }
+        throw "factor() failed";
+    }
+};
+
+class ServerNetWork
+{
+private:
+    bool readN(void* buf, ssize_t len) //ssize_t = long int
+    {
+        ssize_t total = 0;
+        char* data = static_cast<char*>(buf);
+        while (total < len)
+        {
+            ssize_t read_size = ::read(client_id, data + total, len - total);
+            if(read_size == 0) return false;
+
+            if(read_size < 0)
+            {
+                if(errno == EINTR) continue;
+                return false;
+            }
+            total += read_size;
+        }
+        return true;
+    }
+
+    bool writeN(const void* buff, ssize_t len)
+    {
+        if(len == 0) return true;
+        const char* data = static_cast<const char*>(buff);
+        
+        ssize_t total = 0;
+        while (total < len)
+        {
+            ssize_t ret = ::write(client_id, data + total, len - total);
+            if(ret == 0) return false;
+            if(ret < 0)
+            {
+                if(errno == EINTR) continue;
+                return false;
+            }
+            total += ret;
+        }
+        return true;
+    }
+public:
+    ServerNetWork():socket_id(-1), client_id(-1){}
+    ~ServerNetWork()
+    {
+        if(socket_id >= 0)
+            ::close(socket_id);
+        if(client_id >= 0)
+            ::close(client_id);
+    }
+
+    bool SetSocket(uint16_t port_nm)
+    {
+        socket_id = socket(AF_INET, SOCK_STREAM, 0);
+        if(socket_id == -1)
+        {
+            perror("socket error: ");
+            return false;
+        }
+
+        struct sockaddr_in address;
+        address.sin_port = htons(port_nm);
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = INADDR_ANY;
+        if(::bind(socket_id, (sockaddr*)&address, sizeof(sockaddr_in)) == -1) 
+        {
+            ::close(socket_id);
+            perror("bind error: ");
+            return false;
+        }
+        
+        if(::listen(socket_id, 128) == -1)
+        {
+            ::close(socket_id);
+            perror("listen error: ");
+            return false;
+        }
+        return true;
+    }
+
+    bool accept()
+    {
+        struct sockaddr_in address{};
+        socklen_t len = sizeof(address);
+        client_id = ::accept(socket_id, (sockaddr*)&address, &len);
+        if(client_id == -1)
+        {
+            ::close(socket_id);
+            perror("accpet error: ");
+            return false;
+        }
+        string client_ip(INET_ADDRSTRLEN, ' ');
+        inet_ntop(AF_INET, &address.sin_addr, &client_ip[0], INET_ADDRSTRLEN);
+        cout << "client ip: " << client_ip << "\n";
+        return true;
+    }
+
+    template<typename DefaultType>
+    typename enable_if<is_arithmetic<DefaultType>::value, bool>::type write(DefaultType text)
+    {
+        if constexpr (sizeof(DefaultType) == 4)
+            text = htonl(text);
+        else if constexpr (sizeof(DefaultType) == 8)
+            text = htobe64(text);
+        return writeN(&text, sizeof(DefaultType));
+    }
+
+    bool write(const string& text)
+    {
+        size_t data_size = text.size();
+        if(!write(data_size)) return false;
+        
+        return writeN(text.data(), data_size);
+    }
+
+    template<typename DefaultType>
+    typename enable_if<is_arithmetic<DefaultType>::value, bool>::type read(DefaultType& text)
+    {
+        if(!readN(&text, sizeof(DefaultType))) return false;
+
+        if constexpr (sizeof(DefaultType) == 4)
+            text = ntohl(text);
+        else if constexpr (sizeof(DefaultType) == 8)
+            text = be64toh(text);
+        return true;
+    }
+
+    bool read(string& text)
+    {
+        ssize_t len;
+        read(len);
+
+        const uint64_t MAX_VAL = 10*1024*1024;
+        if(len > MAX_VAL) return false;
+
+        text.resize(len);
+        return readN(&text[0], len);
+    }
+
+private:
+    int socket_id;
+    int client_id;
+};
+
+class ClientNetWork
+{
+private:
+    bool readN(void* buf, ssize_t len) //ssize_t = long int
+    {
+        ssize_t total = 0;
+        char* data = static_cast<char*>(buf);
+        while (total < len)
+        {
+            ssize_t read_size = ::read(client_id, data + total, len - total);
+            if(read_size == 0) return false;
+
+            if(read_size < 0)
+            {
+                if(errno == EINTR) continue;
+                return false;
+            }
+            total += read_size;
+        }
+        return true;
+    }
+
+    bool writeN(const void* buff, ssize_t len)
+    {
+        if(len == 0) return true;
+        const char* data = static_cast<const char*>(buff);
+        
+        ssize_t total = 0;
+        while (total < len)
+        {
+            ssize_t ret = ::write(client_id, data + total, len - total);
+            if(ret == 0) return false;
+            if(ret < 0)
+            {
+                if(errno == EINTR) continue;
+                return false;
+            }
+            total += ret;
+        }
+        return true;
+    }
+
+public:
+    ClientNetWork():client_id(-1){}
+    ~ClientNetWork()
+    {
+        ::close(client_id);
+    }
+    bool connect(const string& addr, const int port_nm)
+    {
+        client_id = ::socket(AF_INET, SOCK_STREAM, 0);
+        if(client_id == -1)
+        {
+            perror("socket: ");
+            return false;
+        }
+        struct sockaddr_in address;
+        address.sin_family = AF_INET;
+        address.sin_port = htons(port_nm);
+        inet_pton(AF_INET, addr.c_str(), &address.sin_addr);
+
+        if(::connect(client_id, (sockaddr*)&address, sizeof(address)))
+        {
+            perror("connect: ");
+            return false;
+        }
+        return true;
+    }
+    
+    template<typename DefaultType>
+    typename enable_if<is_arithmetic<DefaultType>::value, bool>::type write(DefaultType text)
+    {
+        if constexpr (sizeof(DefaultType) == 4)
+            text = htonl(text);
+        else if constexpr (sizeof(DefaultType) == 8)
+            text = htobe64(text);
+        return writeN(&text, sizeof(DefaultType));
+    }
+
+    bool write(const string& text)
+    {
+        size_t data_size = text.size();
+        if(!write(data_size)) return false;
+        
+        return writeN(text.data(), data_size);
+    }
+
+    template<typename DefaultType>
+    typename enable_if<is_arithmetic<DefaultType>::value, bool>::type read(DefaultType& text)
+    {
+        if(!readN(&text, sizeof(DefaultType))) return false;
+
+        if constexpr (sizeof(DefaultType) == 4)
+            text = ntohl(text);
+        else if constexpr (sizeof(DefaultType) == 8)
+            text = be64toh(text);
+        return true;
+    }
+
+    bool read(string& text)
+    {
+        ssize_t len;
+        read(len);
+
+        const uint64_t MAX_VAL = 10 * 1024 * 1024;
+        if(len > MAX_VAL) return false;
+
+        text.resize(len);
+        return readN(&text[0], len);
+    }
+
+private:
+    int client_id;
+};
+
+template<typename T>
+class UnionMatrix
+{
+private:
+    struct UnionValue
+    {
+        T value;
+        UnionValue(const T& value):value(value){}
+        T get_value()
+        {
+            return value;
+        }
+    };
+
+    map<T, shared_ptr<UnionValue> > nodes;
+    map<shared_ptr<UnionValue>, shared_ptr<UnionValue> > parents;
+    map<shared_ptr<UnionValue>, int> nodes_size;
+
+    int _graph_count;
+private:
+    shared_ptr<UnionValue> find_father(const T& node)
+    {
+        if(!nodes.count(node)) return nullptr;
+
+        shared_ptr<UnionValue> p_node = nodes[node];
+
+        stack<shared_ptr<UnionValue> > m_stack;
+        while (parents[p_node] != p_node)
+        {
+            p_node = parents[p_node];
+            m_stack.push(p_node);
+        }
+
+        while (!m_stack.empty())
+        {
+            parents[m_stack.top()] = p_node;
+            m_stack.pop();
+        }
+        return p_node;
+    }
+
+public:
+    UnionMatrix(const vector<T>& values)
+    {
+        for (size_t i = 0; i < values.size(); i++)
+        {
+            shared_ptr<UnionValue> p_node = make_shared<UnionValue>(values[i]);
+
+            nodes.insert(make_pair(values[i], p_node));
+            parents.insert(make_pair(p_node, p_node));
+
+            nodes_size.insert(make_pair(p_node, 1));
+        } 
+    }
+
+    void set_count(int N){ _graph_count = N; }
+
+    void set_same_union(const T& A, const T& B)
+    {
+        if(!nodes.count(A) || !nodes.count(B)) return;
+
+        shared_ptr<UnionValue> A_parent = find_father(A);
+        shared_ptr<UnionValue> B_parent = find_father(B);
+
+        if(A_parent == B_parent) return;
+
+        if(nodes_size[A_parent] >= nodes_size[B_parent])
+        {
+            parents[B_parent] = A_parent;
+            nodes_size[A_parent] += nodes_size[B_parent];
+            nodes_size.erase(B_parent);
+        }
+        else
+        {
+            parents[A_parent] = B_parent;
+            nodes_size[B_parent] += nodes_size[A_parent];
+            nodes_size.erase(A_parent);
+        }
+        _graph_count--;
+    }
+
+    bool is_same_union(const T& A, const T& B)
+    {
+        if(!nodes.count(A) || !nodes.count(B)) return false;
+        return find_father(A) == find_father(B);
+    }
+
+    int get_union_count()
+    {
+        return _graph_count;
+    }
+
+};
+//graph alghorathic
+int Islands(const vector<vector<char> >& matrix);
+int RottingOranges(vector<vector<int> >& matrix);
+
+//tomorrow write again
+vector<string> WordLadder(const string& start_str, const string& end_str, const vector<string>& wordlist);
+
+bool CourseSchedule(int numCourses, const vector<pair<int, int> >& prerequisites);
+
+vector<int> ListCourseSchedule(int numCourses, const vector<pair<int, int> > &prerequisites);
+
+int Robbery(const vector<int>& data);
+
+int RobberyII(const vector<int>& data);
+
+bool PartitionEqualSubsetSum(const vector<int>& data);
+
+int BackpackProblem(int max_capacity, const vector<int>& weights, const vector<int>& values);
+
+int LongestIncreasingSubsequence(const vector<int>& values);
+
+class HighConcurrency
+{
+private:
+    using EventType = vector<struct epoll_event>;
+    using BUffType = vector<char>;
+
+public:
+    HighConcurrency():_epoll_id(-1){}
+
+    bool build_server(uint32_t portId);
+    bool build_epoll(uint32_t portId);
+
+private:
+    void set_nonblock(int fd);
+
+private:
+    int _epoll_id;
+    int _server_id;
+    static const int kInitEventListSize = 16;
+    static const int kInitReadSize = 1024;
+
+};
+
+int Palindrome(const string& str);
+
+string PalindromeII(const string& str);
+
+int BurstBalloons(const vector<int>& data);
+
+int UniquePaths(int rows, int cols);
+
+int CoinChange(const vector<int>& coins, int mount);
